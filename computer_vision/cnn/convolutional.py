@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 import torchvision
 from torchvision import datasets
 from torchvision.transforms import ToTensor
-
+#from torchmetrics import ConfusionMatrix
+#from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -90,7 +91,7 @@ class CNNModel(nn.Module):
                 pred_logit = self(sample)
                 pred_prob = torch.softmax(pred_logit.squeeze(), dim=0)
                 pred_probs.append(pred_prob.cpu())
-        return torch.stack(pred_probs)
+        return pred_probs
 
 
 class Train:
@@ -105,7 +106,7 @@ class Train:
 
     def train(self):
         torch.manual_seed(42)
-        epochs = 5
+        epochs = 3
         for epoch in range(epochs):
             print(f"Epoch: {epoch}\n---------")
             self.train_step()
@@ -167,9 +168,28 @@ def main():
         test_labels.append(label)
 
     pred_probs = model.make_predictions(test_samples)
-    pred_classes = pred_probs.argmax(dim=1)
+    pred_probs_stack = torch.stack(pred_probs)
+    pred_classes = pred_probs_stack.argmax(dim=1)
     print(f"Predicted labels: {pred_classes}")
 
+    class_names = data_loader.class_names
+
+    # Show predictions
+    plt.figure(figsize=(9, 9))
+    nrows = 3
+    ncols = 3
+    for i, sample in enumerate(test_samples):
+        plt.subplot(nrows, ncols, i + 1)
+        plt.imshow(sample.squeeze(), cmap="gray")
+        pred_label = class_names[pred_classes[i]]
+        truth_label = class_names[test_labels[i]]
+        title_text = f"Pred: {pred_label} | Truth: {truth_label}"
+        if pred_label == truth_label:
+            plt.title(title_text, fontsize=10, c="g")
+        else:
+            plt.title(title_text, fontsize=10, c="r")
+        plt.axis(False)
+    plt.show()
 
 
 if __name__ == "__main__":
