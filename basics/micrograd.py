@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from graphviz import Digraph
 
 
+# 1.27h
+
 class Value:
     def __init__(self, data, _children=(), _op='', label=''):
         self.data = data
@@ -21,8 +23,8 @@ class Value:
         out = Value(self.data + other.data, (self, other), '+')
 
         def _backward():
-            self.grad = 1.0 * out.grad
-            other.grad = 1.0 * out.grad
+            self.grad += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
 
         out._backward = _backward
         return out
@@ -31,8 +33,8 @@ class Value:
         out = Value(self.data * other.data, (self, other), '*')
 
         def _backward():
-            self.grad = other.data * out.grad
-            other.grad = self.data * out.grad
+            self.grad += other.data * out.grad
+            other.grad += self.data * out.grad
 
         out._backward = _backward
         return out
@@ -43,11 +45,43 @@ class Value:
         out = Value(t, (self,), 'tanh')
 
         def _backward():
-            self.grad = (1 - t ** 2) * out.grad
+            self.grad += (1 - t ** 2) * out.grad
             print(self.grad)
 
         out._backward = _backward
         return out
+
+    def backward(self):
+        to = []
+        visited = set()
+
+        def build(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev:
+                    build(child)
+                to.append(v)
+
+        build(self)
+        self.grad = 1.0
+        for n in reversed(to):
+            n._backward()
+
+
+def topological_order(root):
+    result = []
+    visited = set()
+
+    def build(v):
+        if v not in visited:
+            visited.add(v)
+            for child in v._prev:
+                build(child)
+            result.append(v)
+
+    build(root)
+
+    return result
 
 
 def trace(root):
@@ -78,6 +112,7 @@ def draw_dot(root):
         dot.edge(str(id(n1)), str(id(n2)) + n2._op)
     return dot
 
+
 def test():
     x1 = Value(2.0, label='x1')
     x2 = Value(0.0, label='x2')
@@ -85,30 +120,32 @@ def test():
     w1 = Value(-3.0, label='w1')
     w2 = Value(1.0, label='w2')
 
-    b=Value(6.8813735870195432, label='b')
+    b = Value(6.8813735870195432, label='b')
 
-    x1w1=x1*w1
+    x1w1 = x1 * w1
     x1w1.label = 'x1w1'
 
-    x2w2=x2*w2
+    x2w2 = x2 * w2
     x2w2.label = 'x2w2'
 
-    x1w1x2w2 = x1w1+x2w2
+    x1w1x2w2 = x1w1 + x2w2
     x1w1x2w2.label = 'x1w1x2w2'
 
-    n=x1w1x2w2+b
+    n = x1w1x2w2 + b
     n.label = 'n'
 
-    o=n.tanh()
-    o.grad = 1.0
+    o = n.tanh()
+    #o.grad = 1.0
     o.label = 'o'
 
-    o._backward()
-    n._backward()
-    b._backward()
-    x1w1x2w2._backward()
-    x1w1._backward()
-    x2w2._backward()
+    # o._backward()
+    # n._backward()
+    # b._backward()
+    # x1w1x2w2._backward()
+    # x1w1._backward()
+    # x2w2._backward()
+
+    o.backward()
 
     dot = draw_dot(o)
     dot.render("graph_output", view=True)
