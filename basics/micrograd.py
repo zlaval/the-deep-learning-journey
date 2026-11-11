@@ -1,11 +1,42 @@
 import math
+import random
+from typing import Self
 
 import numpy as np
 from matplotlib import pyplot as plt
 from graphviz import Digraph
 
 
-# 1.27h
+def trace(root):
+    nodes, edges = set(), set()
+
+    def build(v):
+        if v not in nodes:
+            nodes.add(v)
+            for child in v._prev:
+                edges.add((child, v))
+                build(child)
+
+    build(root)
+    return nodes, edges
+
+
+def draw_dot(root):
+    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'})
+    nodes, edges = trace(root)
+    for n in nodes:
+        uid = str(id(n))
+        dot.node(name=uid, label="{ %s | data %.4f | grad %.4f }" % (n.label, n.data, n.grad), shape='record')
+        if n._op:
+            dot.node(name=uid + n._op, label=n._op)
+            dot.edge(uid + n._op, uid)
+
+    for n1, n2 in edges:
+        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
+    return dot
+
+
+# 1.52h
 
 class Value:
     def __init__(self, data, _children=(), _op='', label=''):
@@ -106,6 +137,64 @@ class Value:
             n._backward()
 
 
+class Neuron:
+    def __init__(self, nin):
+        self.w = [Value(random.uniform(-1, 1)) for _ in range(nin)]
+        self.b = Value(random.uniform(-1, 1))
+
+    def __call__(self, x):
+        act = sum((wi * xi for wi, xi in zip(self.w, x)), self.b)
+        return act.tanh()
+
+
+class Layer:
+    def __init__(self, nin, nout):
+        self.neurons = [Neuron(nin) for _ in range(nout)]
+
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs[0] if len(outs) == 1 else outs
+
+
+class MultiLayerPerceptron:
+    def __init__(self, nin, nouts):
+        sz = [nin] + nouts
+        self.layers = [Layer(sz[i], sz[i + 1]) for i in range(len(nouts))]
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+def mlp_test():
+    x = [2.0, 3.0, -1.0]
+    n = MultiLayerPerceptron(3, [4, 4, 1])
+    print(n(x))
+    dot = draw_dot(n(x))
+    dot.render("graph_output", view=True)
+
+
+def teach():
+    n = MultiLayerPerceptron(3, [4, 4, 1])
+    xs = [
+        [2.0, 3.0, -1.0],
+        [3.0, -1.0, 0.5],
+        [0.5, 1.0, 1.0],
+        [1.0, 1.0, -1.0]
+    ]
+
+    ys = [1.0, -1.0, -1.0, 1.0]
+
+    ypred = [n(x) for x in xs]
+    print(ypred)
+
+
+if __name__ == '__main__':
+    # mlp_test()
+    teach()
+
+
 def topological_order(root):
     result = []
     visited = set()
@@ -120,35 +209,6 @@ def topological_order(root):
     build(root)
 
     return result
-
-
-def trace(root):
-    nodes, edges = set(), set()
-
-    def build(v):
-        if v not in nodes:
-            nodes.add(v)
-            for child in v._prev:
-                edges.add((child, v))
-                build(child)
-
-    build(root)
-    return nodes, edges
-
-
-def draw_dot(root):
-    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'})
-    nodes, edges = trace(root)
-    for n in nodes:
-        uid = str(id(n))
-        dot.node(name=uid, label="{ %s | data %.4f | grad %.4f }" % (n.label, n.data, n.grad), shape='record')
-        if n._op:
-            dot.node(name=uid + n._op, label=n._op)
-            dot.edge(uid + n._op, uid)
-
-    for n1, n2 in edges:
-        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
-    return dot
 
 
 def test():
@@ -187,10 +247,6 @@ def test():
 
     dot = draw_dot(o)
     dot.render("graph_output", view=True)
-
-
-if __name__ == '__main__':
-    test()
 
 
 def value_playground():
