@@ -89,7 +89,7 @@ class Value:
 
     def __pow__(self, other):
         assert isinstance(other, (int, float)), "only support int / float"
-        out = Value(self.data * other.data, (self,), f'**{other}')
+        out = Value(self.data ** other, (self,), f'**{other}')
 
         def _backward():
             self.grad += other * self.data ** (other - 1) * out.grad
@@ -188,6 +188,12 @@ def teach():
 
     ypred = [n(x) for x in xs]
     print(ypred)
+
+    loss = sum((yout - ygt) ** 2 for ygt, yout in zip(ys, ypred))
+    loss._backward()
+
+    dot = draw_dot(loss)
+    dot.render("graph_output", view=True)
 
 
 if __name__ == '__main__':
