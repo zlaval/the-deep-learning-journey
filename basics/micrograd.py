@@ -36,7 +36,7 @@ def draw_dot(root):
     return dot
 
 
-# 1.52h
+# 2h
 
 class Value:
     def __init__(self, data, _children=(), _op='', label=''):
@@ -146,6 +146,9 @@ class Neuron:
         act = sum((wi * xi for wi, xi in zip(self.w, x)), self.b)
         return act.tanh()
 
+    def parameters(self):
+        return self.w + [self.b]
+
 
 class Layer:
     def __init__(self, nin, nout):
@@ -154,6 +157,12 @@ class Layer:
     def __call__(self, x):
         outs = [n(x) for n in self.neurons]
         return outs[0] if len(outs) == 1 else outs
+
+    def parameters(self):
+        params = []
+        for neuron in self.neurons:
+            params.extend(neuron.parameters())
+        return params
 
 
 class MultiLayerPerceptron:
@@ -165,6 +174,9 @@ class MultiLayerPerceptron:
         for layer in self.layers:
             x = layer(x)
         return x
+
+    def parameters(self):
+        return [p for layer in self.layers for p in layer.parameters()]
 
 
 def mlp_test():
@@ -192,8 +204,8 @@ def teach():
     loss = sum((yout - ygt) ** 2 for ygt, yout in zip(ys, ypred))
     loss._backward()
 
-    dot = draw_dot(loss)
-    dot.render("graph_output", view=True)
+   # dot = draw_dot(loss)
+   # dot.render("graph_output", view=True)
 
 
 if __name__ == '__main__':
