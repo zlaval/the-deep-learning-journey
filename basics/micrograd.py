@@ -105,7 +105,7 @@ class Value:
 
         def _backward():
             self.grad += (1 - t ** 2) * out.grad
-            #print(self.grad)
+            # print(self.grad)
 
         out._backward = _backward
         return out
@@ -198,29 +198,32 @@ def teach():
 
     ys = [1.0, -1.0, -1.0, 1.0]
 
-    ypred = [n(x) for x in xs]
-    print(ypred)
+    # ypred = [n(x) for x in xs]
+    # print(ypred)
 
+    # loss = sum((yout - ygt) ** 2 for ygt, yout in zip(ys, ypred))
+    # loss.backward()
+    # print(f"loss: {loss}")
 
-    loss = sum((yout - ygt) ** 2 for ygt, yout in zip(ys, ypred))
-    loss.backward()
-    print(f"loss: {loss}")
+    # print("--------------------")
+    # dot = draw_dot(loss)
+    # dot.render("graph_output", view=True)
 
-    print("--------------------")
-    #dot = draw_dot(loss)
-    #dot.render("graph_output", view=True)
+    # for p in n.parameters():
+    #    p.data += -0.01 * p.grad
 
-    for p in n.parameters():
-        p.data += -0.01 * p.grad
-
-    for _ in range(15):
+    for _ in range(500):
         ypred = [n(x) for x in xs]
         print(ypred)
         loss = sum((yout - ygt) ** 2 for ygt, yout in zip(ys, ypred))
+
+        for p in n.parameters():
+            p.grad = 0.0
+
         loss.backward()
         print(f"loss: {loss}")
         for p in n.parameters():
-            p.data += -0.01 * p.grad
+            p.data += -0.05 * p.grad
 
 
 if __name__ == '__main__':
